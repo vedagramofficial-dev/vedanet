@@ -73,10 +73,11 @@ fun VedaNetApp() {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(
                                 onClick = {
-                                    VpnController.connect(context)
+                                    val profileId = profiles.firstOrNull()?.id
+                                    VpnController.connect(context, profileId)
                                     isConnected = true
                                 },
-                                enabled = !isConnected
+                                enabled = !isConnected && profiles.isNotEmpty()
                             ) {
                                 Text("Connect")
                             }

@@ -12,21 +12,25 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.vedanet.app.MainActivity
+import com.vedanet.app.data.ProfileStore
+import com.vedanet.app.xray.XrayManager
 
 class VedaNetVpnService : VpnService() {
 
     private var tunInterface: ParcelFileDescriptor? = null
+    private lateinit var xrayManager: XrayManager
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        xrayManager = XrayManager(this)
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_CONNECT -> startVpn()
+            ACTION_CONNECT -> startVpn(intent.getStringExtra(EXTRA_PROFILE_ID))
             ACTION_DISCONNECT -> stopVpn()
             else -> stopSelf()
         }
@@ -34,7 +38,16 @@ class VedaNetVpnService : VpnService() {
         return START_NOT_STICKY
     }
 
-    private fun startVpn() {
+    private fun startVpn(profileId: String?) {
+        val store = ProfileStore(this)
+        val profile = store.load().firstOrNull { it.id == profileId }
+            ?: store.load().firstOrNull()
+
+        if (profile == null) {
+            stopVpn()
+            return
+        }
+
         val configureIntent = PendingIntent.getActivity(
             this,
             0,
@@ -49,6 +62,8 @@ class VedaNetVpnService : VpnService() {
         )
 
         runCatching {
+            xrayManager.start(profile)
+
             val builder = Builder()
                 .setSession("VedaNet")
                 .setMtu(1500)
@@ -72,6 +87,10 @@ class VedaNetVpnService : VpnService() {
     }
 
     private fun stopVpn() {
+        runCatching {
+            xrayManager.stop()
+        }
+
         runCatching {
             tunInterface?.close()
         }
@@ -118,6 +137,7 @@ class VedaNetVpnService : VpnService() {
     companion object {
         const val ACTION_CONNECT = "com.vedanet.app.action.CONNECT"
         const val ACTION_DISCONNECT = "com.vedanet.app.action.DISCONNECT"
+        const val EXTRA_PROFILE_ID = "extra_profile_id"
 
         private const val CHANNEL_ID = "vedanet_vpn"
         private const val NOTIFICATION_ID = 1001
