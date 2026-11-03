@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,6 +33,8 @@ import com.vedanet.app.data.Profile
 import com.vedanet.app.data.ProfileStore
 import com.vedanet.app.data.Protocol
 import com.vedanet.app.ui.theme.VedaNetTheme
+import com.vedanet.app.vpn.VedaNetVpnService
+import com.vedanet.app.vpn.VpnController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +44,7 @@ fun VedaNetApp() {
     val profiles = remember { mutableStateListOf<Profile>().apply { addAll(store.load()) } }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var isConnected by remember { mutableStateOf(VedaNetVpnService.isRunning) }
 
     VedaNetTheme {
         Scaffold(
@@ -62,14 +66,33 @@ fun VedaNetApp() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Not connected",
+                            text = if (isConnected) "Connected" else "Not connected",
                             style = MaterialTheme.typography.titleLarge
                         )
-                        Text(
-                            text = "Select a profile to connect",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Button(onClick = { showAddDialog = true }) {
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = {
+                                    VpnController.connect(context)
+                                    isConnected = true
+                                },
+                                enabled = !isConnected
+                            ) {
+                                Text("Connect")
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    VpnController.disconnect(context)
+                                    isConnected = false
+                                },
+                                enabled = isConnected
+                            ) {
+                                Text("Disconnect")
+                            }
+                        }
+
+                        TextButton(onClick = { showAddDialog = true }) {
                             Text("Add profile")
                         }
                     }
